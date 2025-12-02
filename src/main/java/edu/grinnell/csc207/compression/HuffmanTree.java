@@ -1,6 +1,10 @@
 package edu.grinnell.csc207.compression;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 /**
  * A HuffmanTree derives a space-efficient coding of a collection of byte
@@ -16,12 +20,97 @@ import java.util.Map;
  */
 public class HuffmanTree {
 
+    BitInputStream input;
+    BitOutputStream output;
+    PriorityQueue<Node> freq = new PriorityQueue();
+
+    public class Pair{
+        short key;
+        int val;
+        public Pair(short key,int val){
+            this.key = key;
+            this.val = val;
+        }
+    }
+    
+    public class Node{
+        Node leafPairR;
+        Node leafPairL;
+        Integer leafIntR;
+        Integer leafIntL;
+        Integer val;
+        Pair value;
+        public Node(Node leafR, Node leafL){
+            this.leafPairL = leafL;
+            this.leafPairR = leafR;
+            val = leafL.val + leafR.val;
+        }
+        
+        public Node(int leafR, Node leafL){
+            this.leafPairL = leafL;
+            this.leafIntR = leafR;
+            val = leafL.val + leafR;
+        }
+
+        public Node(Node leafR,int leafL){
+            this.leafIntL = leafL;
+            this.leafPairR = leafR;
+            val = leafL + leafR.val;
+        }
+
+        public Node(int leafR, int leafL){
+            this.leafIntL = leafL;
+            this.leafIntR = leafR;
+            val = leafL + leafR;
+        }
+
+        public Node(Pair leaf){
+            value = leaf;
+        }
+        public Node(int leaf){
+            val= leaf;
+        }
+    }
+
+    public List<Short> getKeys(Map<Short,Integer> data){
+        List <Short> l = new ArrayList <Short> ();
+        Set<Short> s = data.keySet();
+        l.addAll (s);
+        return l;
+    }
+
+    public int getValMax(Map<Short, Integer> freqs){
+        List<Short> keyList = getKeys(freqs);
+        int max = 0;
+        for(int i = 0; i < freqs.size(); i++){
+            if(freqs.get(keyList.get(i)) > max){
+                max = freqs.get(keyList.get(i));
+            }
+        }
+        return max;
+    }
     /**
      * Constructs a new HuffmanTree from a frequency map.
      * @param freqs a map from 9-bit values to frequencies.
      */
     public HuffmanTree (Map<Short, Integer> freqs) {
-        // TODO: fill me in!
+        List<Short> keyList = getKeys(freqs);
+
+        for(int j = 0; j < getValMax(freqs); j++){
+            for(int i = 0; i < freqs.size(); i++){
+                if(freqs.get(keyList.get(i)) == j){
+                    freq.add(new Node(new Pair(keyList.get(i), j)));
+                }
+
+            }
+        }
+
+        while(freq.size()>1){
+            Node temp = new Node(freq.poll(), freq.poll());
+            freq.add(temp);
+        }
+
+
     }
 
     /**
@@ -29,7 +118,15 @@ public class HuffmanTree {
      * @param in the input file (as a BitInputStream)
      */
     public HuffmanTree (BitInputStream in) {
-        // TODO: fill me in!
+
+        while(in.hasBits()){
+            freq.add(new Node(in.readBits(9)));
+        }
+
+        while(freq.size()>1){
+            Node temp = new Node(freq.poll(), freq.poll());
+            freq.add(temp);
+        }
     }
 
     /**
@@ -38,7 +135,18 @@ public class HuffmanTree {
      * @param out the output file as a BitOutputStream
      */
     public void serialize (BitOutputStream out) {
-        // TODO: fill me in!
+        HuffmanTree temp = new HuffmanTree(input);
+        while(temp != null){
+            Integer tempVal = freq.poll().val;
+            if( tempVal instanceof Integer){
+                 out.writeBit(1);
+            }else{
+                out.writeBit(0);
+                out.writeBits(input.readBits(8),8)
+            }
+           
+        }
+        
     }
    
     /**
@@ -49,7 +157,10 @@ public class HuffmanTree {
      * @param out the file to write the compressed output to.
      */
     public void encode (BitInputStream in, BitOutputStream out) {
-        // TODO: fill me in!
+        while(in.hasBits()){
+           int temp = in.readBits(8);
+           out.writeBits(temp, 8);
+        }
     }
 
     /**
@@ -61,6 +172,10 @@ public class HuffmanTree {
      * @param out the file to write the decompressed output to.
      */
     public void decode (BitInputStream in, BitOutputStream out) {
-        // TODO: fill me in!
+        in.readBits(32);
+        HuffmanTree temp = new HuffmanTree(in);
+        while(in.hasBits()){
+            out.writeBits(in.readBits(8),8);
+        }
     }
 }
